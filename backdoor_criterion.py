@@ -42,31 +42,6 @@ matplotlib.rcParams["axes.grid"] = False
 # ```
 
 # %% tags=[]
-fig, ax = plt.subplots()
-
-K = 6
-
-for k in range(0,K+1):
-    # plot pmf of binom(n=k, np=k)
-    _n = K
-    _p = k/_n
-    
-    _x = np.arange(0, K+1)
-    _y = [stats.binom.pmf(x, _n, _p) for x in _x]
-    print(sum(_y))
-    
-    ax.plot(_x, _y, label=f"{k=}")
-ax.legend()
-    
-
-# %%
-rs = np.random.RandomState(0)
-rs.binomial()
-
-# %%
-np.clip()
-
-# %% tags=[]
 import numpy as np
 from numpy.random import RandomState
 from scipy import stats
@@ -96,7 +71,7 @@ def y(z:int, u:int, rs:RandomState):
 # %% tags=[]
 N = 100000
 
-U = np.random.RandomState(seed=0).randint(low=1, high=K, size=N)
+U = np.random.RandomState(seed=0).randint(low=1, high=K-1, size=N)
 X = x(U, RandomState(seed=1))
 Z = z(X, RandomState(seed=2))
 Y = y(Z, U, RandomState(seed=3))
@@ -119,7 +94,7 @@ fig.tight_layout()
 # ### Generate new data
 
 # %% tags=[]
-xp = 3
+xp = 4
 
 Up = np.random.RandomState(seed=0).randint(low=1, high=K, size=N)
 Xp= np.ones_like(Up)*xp
@@ -166,14 +141,15 @@ def backdoor_p_y_do_x(X:np.ndarray, Y:np.ndarray, Z:np.ndarray, x:int):
             p1 = est_p_z_given_x_is_x(z)
             p2 = 0
             for xp in x_domain:
-                p2 += ((Y==y) & (X==xp) & (Z==z)).sum()/((X==xp) & (Z==z)).sum() * est_p_x(xp)
+                if ((X==xp) & (Z==z)).sum() > 0:
+                    p2 += ((Y==y) & (X==xp) & (Z==z)).sum()/((X==xp) & (Z==z)).sum() * est_p_x(xp)
             p+=p1*p2
         est_pmf[idx] = p
     return np.array(est_pmf)
 
 # %% tags=[]
 pp = backdoor_p_y_do_x(X,Y,Z,xp)
-pp
+pp.sum()
 
 # %% [markdown]
 # ## Does the backdoor criterion work?
@@ -194,5 +170,11 @@ Y.min(), Y.max()
 
 # %% tags=[]
 pp.sum()
+
+# %% tags=[]
+xp
+
+# %% tags=[]
+set(X), set(Z), set(Z[X==1])
 
 # %%
