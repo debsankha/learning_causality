@@ -42,22 +42,52 @@ matplotlib.rcParams["axes.grid"] = False
 # ```
 
 # %% tags=[]
+fig, ax = plt.subplots()
+
+K = 6
+
+for k in range(0,K+1):
+    # plot pmf of binom(n=k, np=k)
+    _n = K
+    _p = k/_n
+    
+    _x = np.arange(0, K+1)
+    _y = [stats.binom.pmf(x, _n, _p) for x in _x]
+    print(sum(_y))
+    
+    ax.plot(_x, _y, label=f"{k=}")
+ax.legend()
+    
+
+# %%
+rs = np.random.RandomState(0)
+rs.binomial()
+
+# %%
+np.clip()
+
+# %% tags=[]
 import numpy as np
 from numpy.random import RandomState
+from scipy import stats
 
-K=3
+K=6 # maximum value is K-1
 
 def x(u, rs: RandomState):
     u = np.atleast_1d(u)
-    return (u + rs.choice([-1,0,1], size=u.shape, p=[0.1, 0.7, 0.2]))
+    # idea: x follows Binom(n=K, np=u)
+    return np.clip(rs.binomial(n=K, p=u/K), 1, K-1)
 
 def z(x:int, rs: RandomState):
     x = np.atleast_1d(x)
-    return (x + rs.choice([-1,0,1], size=x.shape, p=[0.2, 0.6, 0.2]))
+    # idea: z follows Binom(n=K, np=x)
+    return np.clip(rs.binomial(n=K, p=x/K), 1, K-1)
 
 def y(z:int, u:int, rs:RandomState):
     z, u = np.atleast_1d(z), np.atleast_1d(u)
-    return (z+u+rs.choice([-1,0,1], size=u.shape, p=[0.1, 0.7, 0.2]))
+    # idea: y follows Binom(n=K, np=z+y)
+    w = (z+u)%K
+    return np.clip(rs.binomial(n=K, p=w/K), 1, K-1)
 
 
 # %% [markdown]
@@ -66,7 +96,7 @@ def y(z:int, u:int, rs:RandomState):
 # %% tags=[]
 N = 100000
 
-U = np.random.RandomState(seed=0).randint(low=0, high=K, size=N)
+U = np.random.RandomState(seed=0).randint(low=1, high=K, size=N)
 X = x(U, RandomState(seed=1))
 Z = z(X, RandomState(seed=2))
 Y = y(Z, U, RandomState(seed=3))
@@ -75,10 +105,12 @@ Y = y(Z, U, RandomState(seed=3))
 # ## Visualize data
 
 # %% tags=[]
-fig, axes = plt.subplots(ncols=4, figsize=(12, 4), sharey=True)
+fig, axes = plt.subplots(ncols=4, figsize=(12, 4))
 
 for var, ax in zip((U,X,Z,Y), axes):
     ax.hist(var, bins=np.arange(var.min(), var.max()+2), density=True)
+    
+fig.tight_layout()
 
 # %% [markdown]
 # ## Compute $P(Y|do(x=x'))$ by generating new data
@@ -87,9 +119,9 @@ for var, ax in zip((U,X,Z,Y), axes):
 # ### Generate new data
 
 # %% tags=[]
-xp = 1
+xp = 3
 
-Up = np.random.RandomState(seed=0).randint(low=0, high=K, size=N)
+Up = np.random.RandomState(seed=0).randint(low=1, high=K, size=N)
 Xp= np.ones_like(Up)*xp
 Zp = z(Xp, RandomState(seed=2))
 Yp = y(Zp, Up, RandomState(seed=3))
@@ -111,29 +143,22 @@ fig.tight_layout()
 # $$
 
 # %% tags=[]
-est_p_z_given_x_is_xp = kde(dataset=Z[X==xp])
-
-# %% tags=[]
 from tqdm import tqdm
 
-# %% tags=[]
-np.logical_and(X==1, Y==3).sum()
-
 
 # %% tags=[]
-class EmptyDataError(Exception):
-    ...
-
 def backdoor_p_y_do_x(X:np.ndarray, Y:np.ndarray, Z:np.ndarray, x:int):
     x_domain = np.arange(X.min(), X.max()+1)
     y_domain = np.arange(Y.min(), Y.max()+1)
     z_domain = np.arange(Z.min(), Z.max()+1)
     
     
-    est_p_z_given_x_is_x = lambda z:np.logical_and(Z==z, X==x).sum()/(X==x).sum()
+    def est_p_z_given_x_is_x(z):
+        return ((Z==z) & (X==x)).sum()/(X==x).sum()
+    
     est_p_x = lambda x_: (X==x_).sum()/len(X)
     
-    # now apply the formula
+    # now apply the formu
     est_pmf = np.zeros_like(y_domain, dtype='float')
     for idx, y in enumerate(y_domain):
         p = 0
@@ -141,30 +166,24 @@ def backdoor_p_y_do_x(X:np.ndarray, Y:np.ndarray, Z:np.ndarray, x:int):
             p1 = est_p_z_given_x_is_x(z)
             p2 = 0
             for xp in x_domain:
-                #est_p_y_given_x_and_z
-                p2 += (np.logical_and(Y==y, X==xp, Z==z).sum()/np.logical_and(X==xp, Z==z).sum()) * est_p_x(xp)
+                p2 += ((Y==y) & (X==xp) & (Z==z)).sum()/((X==xp) & (Z==z)).sum() * est_p_x(xp)
             p+=p1*p2
         est_pmf[idx] = p
     return np.array(est_pmf)
 
 # %% tags=[]
-X.min(), X.max()
-
-# %% tags=[]
 pp = backdoor_p_y_do_x(X,Y,Z,xp)
-
-# %%
 pp
 
 # %% [markdown]
 # ## Does the backdoor criterion work?
 
 # %% tags=[]
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(8,5))
 
 y_domain = np.arange(Y.min(), Y.max()+1)
 
-ax.hist(Yp, bins=range(Yp.min(), Yp.max()+2), density=True, label='actual')
+ax.hist(Yp, bins=np.arange(Yp.min()-0.5, Yp.max()+1.5, 1), density=True, label='actual')
 ax.plot(y_domain, pp, label='backdoor')
 
 ax.legend()
