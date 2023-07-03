@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -19,7 +19,7 @@
 # %% [markdown]
 # ## Define the data generation process
 
-# %% tags=[]
+# %%
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -41,7 +41,7 @@ matplotlib.rcParams["axes.grid"] = False
 # X------Z---Y 
 # ```
 
-# %% tags=[]
+# %%
 import numpy as np
 from numpy.random import RandomState
 from scipy import stats
@@ -68,7 +68,7 @@ def y(z:int, u:int, rs:RandomState):
 # %% [markdown]
 # ## Generate data
 
-# %% tags=[]
+# %%
 N = 100000
 
 U = np.random.RandomState(seed=0).randint(low=1, high=K-1, size=N)
@@ -79,7 +79,7 @@ Y = y(Z, U, RandomState(seed=3))
 # %% [markdown]
 # ## Visualize data
 
-# %% tags=[]
+# %%
 fig, axes = plt.subplots(ncols=4, figsize=(12, 4))
 
 for var, ax in zip((U,X,Z,Y), axes):
@@ -93,7 +93,7 @@ fig.tight_layout()
 # %% [markdown]
 # ### Generate new data
 
-# %% tags=[]
+# %%
 xp = 4
 
 Up = np.random.RandomState(seed=0).randint(low=1, high=K, size=N)
@@ -101,7 +101,7 @@ Xp= np.ones_like(Up)*xp
 Zp = z(Xp, RandomState(seed=2))
 Yp = y(Zp, Up, RandomState(seed=3))
 
-# %% tags=[]
+# %%
 fig, axes = plt.subplots(ncols=4, figsize=(12, 4))
 
 for label, var, ax in zip(list("UXZY"), (Up,Xp,Zp,Yp), axes):
@@ -117,11 +117,11 @@ fig.tight_layout()
 # P(y|do(x=x^*))=\sum_zP(z|x=x^*)\sum_{x'}P(y|x=x',z)P(x=x')
 # $$
 
-# %% tags=[]
+# %%
 from tqdm import tqdm
 
 
-# %% tags=[]
+# %%
 def backdoor_p_y_do_x(X:np.ndarray, Y:np.ndarray, Z:np.ndarray, x:int):
     x_domain = np.arange(X.min(), X.max()+1)
     y_domain = np.arange(Y.min(), Y.max()+1)
@@ -147,14 +147,14 @@ def backdoor_p_y_do_x(X:np.ndarray, Y:np.ndarray, Z:np.ndarray, x:int):
         est_pmf[idx] = p
     return np.array(est_pmf)
 
-# %% tags=[]
+# %%
 pp = backdoor_p_y_do_x(X,Y,Z,xp)
 pp.sum()
 
 # %% [markdown]
 # ## Does the backdoor criterion work?
 
-# %% tags=[]
+# %%
 fig, ax = plt.subplots(figsize=(8,5))
 
 y_domain = np.arange(Y.min(), Y.max()+1)
@@ -165,16 +165,16 @@ ax.plot(y_domain, pp, label='backdoor')
 ax.legend()
 fig.tight_layout()
 
-# %% tags=[]
+# %%
 Y.min(), Y.max()
 
-# %% tags=[]
+# %%
 pp.sum()
 
-# %% tags=[]
+# %%
 xp
 
-# %% tags=[]
+# %%
 set(X), set(Z), set(Z[X==1])
 
 # %%
